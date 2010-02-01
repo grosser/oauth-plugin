@@ -46,18 +46,20 @@ module OAuth
           if request.post? 
             if user_authorizes_token?
               @token.authorize!(current_user)
-              if @token.oauth10?
-                @redirect_url = params[:oauth_callback] || @token.client_application.callback_url
+              redirect_url = if @token.oauth10?
+                 params[:oauth_callback] || @token.client_application.callback_url
               else
-                @redirect_url = @token.oob? ? @token.client_application.callback_url : @token.callback_url
+                @token.oob? ? @token.client_application.callback_url : @token.callback_url
               end
               
-              if @redirect_url
-                if @token.oauth10?
-                  redirect_to "#{@redirect_url}?oauth_token=#{@token.token}"
+              if redirect_url
+                oauth_params = if @token.oauth10?
+                  "oauth_token=#{@token.token}"
                 else
-                  redirect_to "#{@redirect_url}?oauth_token=#{@token.token}&oauth_verifier=#{@token.verifier}"
+                  "oauth_token=#{@token.token}&oauth_verifier=#{@token.verifier}"
                 end
+                connector = redirect_url.include?('?') ? '&' : '?'
+                redirect_to "#{redirect_url}#{connector}#{oauth_params}"
               else
                 render :action => "authorize_success"
               end
